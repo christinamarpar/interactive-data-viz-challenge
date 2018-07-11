@@ -8,39 +8,12 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
+    <div class="panel-body">
+        <select id="selDataset" onchange="optionChanged(this.value)"></select>
+    </div>
     <div id="pie"></div>
-    <div id="metadata"></div>
     <div id="bubble"></div>
-    <div id="gauge"></div>
-    <script>
-        // // Plot the default route once the page loads
-        var default_url = "/";
-        Plotly.d3.json(default_url, function(error, response) {
-        //     if (error) return console.warn(error);
-        //     var data = [response];
-        //     var layout = { margin: { t: 30, b:100 } }
-        //     Plotly.plot("bar", data, layout)
-        })
-
-        // // Update the plot with new data
-        function updatePlotly(newdata) {
-        //     var Bar = document.getElementById('bar');
-        //     Plotly.restyle(Bar, 'x', [newdata.x])
-        //     Plotly.restyle(Bar, 'y', [newdata.y])
-        }
-
-        // Get new data whenever the dropdown selection changes
-        function optionChanged(route) {
-            console.log(route);
-            Plotly.d3.json(`/${route}`, function(error, data) {
-                console.log("newdata", data);
-                updatePlotly(data);
-            });
-        }
-    </script>
-    <select id="selDataset" onchange="optionChanged(this.value)">
-        <!-- populate with option values in JS, by calling on the data returned from /names-->
-        <!-- <option value="emoji_char">Emoji Char</option> -->
-    </select>
+    <div id="sampleMetadata"></div>
+    <script src="{{ url_for('static', filename='js/plotly.js') }}"></script>
 </body>
 </html>

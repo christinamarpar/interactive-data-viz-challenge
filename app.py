@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import json
 
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
@@ -10,7 +11,9 @@ from flask import (
     render_template,
     jsonify,
     request,
-    redirect)
+    redirect,
+    Response
+    )
 
 #################################################
 # Flask Setup
@@ -20,11 +23,12 @@ app = Flask(__name__)
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///db/belly_button_biodiversity.sqlite", echo-False)
+engine = create_engine("sqlite:///db/belly_button_biodiversity.sqlite", echo=False)
 
 Base = automap_base()
 Base.prepare(engine, reflect=True)
-Sample = Base.classes.otu
+Sample = Base.classes.samples
+OTU = Base.classes.otu
 Metadata = Base.classes.samples_metadata
 
 session = Session(engine)
@@ -63,35 +67,29 @@ def wfreq(sample):
     results = session.query(Metadata).statement
     results_df = pd.read_sql_query(results, session.bind)
     ob_num = int(sample.split("_")[1])
-    sample_name = results_df.loc[results_df["SAMPLEID"] == ob_num, :]
-    wfreq = sample_name["WFREQ"].values[0]
+    sample_info = results_df[results_df["SAMPLEID"] == ob_num, :]
+    wfreq = sample_info["WFREQ"].values[0]
     return f"{wfreq}"
 
 @app.route('/samples/<sample>')
 def samples(sample):
-    res_otus = session.query(OTU).statement
-    res_otus_df = pd.read_sql_query(res_otus, session.bind)
-    res_otus_df.set_index('otu_id', inplace=True)
+    results = session.query(Sample).statement    
+    results_df = pd.read_sql_query(results, session.bind)
+    sample_df = results_df[['otu_id',sample]]
 
-    res_samples=session.query(Sample).statement
-    res_samples_df = pd.read_sql_query(res_samples, session.bind)
-    sample_name = res_samples_df[sample]
+    sample_df=sample_df.loc[sample_df[sample]>0]
+    sort_sample_df = sample_df.sort_values(by=sample, ascending=False)
 
-    otu_ids = res_samples_df['otu_id']
-    unsorted_df = pd.DataFrame({
-        "otu_ids":otu_ids,
-        "samples":sample_name
-    })
+    otu_ids = {"otu_ids": list(sort_sample_df['otu_id'].values)}
+    sorted_samples = {"sample_values": list(sort_sample_df[sample].values)}
 
-    sorted_df = unsorted_df.sort_values(by=['samples'], ascending=False)
-    sorted_otus = {'otu_ids': list(sorted_df['otu_ids'].values)}
-    sorted_samples = {"sample_values": list(sorted_df['samples'].values)}
-    for i in range(len(sorted_otus['otu_ids'])):
-        sorted_otus['otu_ids'][i] = int(sorted_otus['otu_ids'][i])
-    for i in range(len(sorted_samples['samples_values'])):
-        sorted_samples['samples_values'][i] = int(sorted_samples["sample_values"][i])
-    results = [sorted_otus, sorted_samples, list(res_otus_df["lowest_taxonomix_unit_found"])]
-    return jsonify(results)
+    for i in range(len(otu_ids["otu_ids"])):
+        otu_ids["otu_ids"][i] = int(otu_ids["otu_ids"][i])
+    for i in range(len(sorted_samples["sample_values"])):
+        sorted_samples["sample_values"][i] = int(sorted_samples["sample_values"][i])
+
+    sample_list=[otu_ids,sorted_samples]
+    return jsonify(list(sample_list))
 
 if __name__ == "__main__":
     app.run(debug=True)
